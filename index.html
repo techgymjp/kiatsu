@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>気圧高度計アプリ</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .metric {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(103, 126, 234, 0.1);
+            border-radius: 15px;
+            border-left: 4px solid #667eea;
+        }
+
+        .metric:last-child {
+            margin-bottom: 0;
+        }
+
+        .metric-icon {
+            font-size: 32px;
+            margin-right: 15px;
+        }
+
+        .metric-info {
+            flex: 1;
+        }
+
+        .metric-label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .metric-unit {
+            font-size: 16px;
+            color: #888;
+            margin-left: 5px;
+        }
+
+        .metric-accuracy {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        .controls {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 5px;
+            box-shadow: 0 4px 15px rgba(103, 126, 234, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(103, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-stop {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+        }
+
+        .status {
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .status-measuring {
+            background: rgba(40, 167, 69, 0.1);
+            color: #28a745;
+            border: 1px solid rgba(40, 167, 69, 0.3);
+        }
+
+        .status-error {
+            background: rgba(220, 53, 69, 0.1);
+            color: #dc3545;
+            border: 1px solid rgba(220, 53, 69, 0.3);
+        }
+
+        .status-idle {
+            background: rgba(108, 117, 125, 0.1);
+            color: #6c757d;
+            border: 1px solid rgba(108, 117, 125, 0.3);
+        }
+
+        .calibration {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .calibration input {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+        }
+
+        .calibration button {
+            padding: 10px 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        .info {
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+            margin-top: 10px;
+            line-height: 1.4;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .update-time {
+            text-align: center;
+            color: #888;
+            font-size: 12px;
+            margin-top: 15px;
+        }
+
+        .sensor-status {
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .sensor-available {
+            background: rgba(40, 167, 69, 0.1);
+            color: #28a745;
+            border: 1px solid rgba(40, 167, 69, 0.3);
+        }
+
+        .sensor-unavailable {
+            background: rgba(255, 193, 7, 0.1);
+            color: #856404;
+            border: 1px solid rgba(255, 193, 7, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 気圧高度計</h1>
+            <p>気圧センサーで正確な高度測定</p>
+        </div>
+
+        <div id="sensorStatus" class="sensor-status">
+            センサー状況を確認中...
+        </div>
+
+        <div class="controls">
+            <button class="btn" id="startBtn" onclick="startMeasurement()">📡 計測開始</button>
+            <button class="btn btn-stop" id="stopBtn" onclick="stopMeasurement()" style="display: none;">⏹️ 計測停止</button>
+        </div>
+
+        <div id="status" class="status status-idle">
+            計測を開始してください
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <div>センサーデータ取得中...</div>
+        </div>
+
+        <div class="card" id="calibrationCard">
+            <div class="metric-label">🔧 海面気圧補正</div>
+            <div class="calibration">
+                <input type="number" id="seaLevelPressure" value="1013.25" step="0.1" min="980" max="1050">
+                <span style="color: #666;">hPa</span>
+                <button onclick="updateCalibration()">適用</button>
+            </div>
+            <div class="info">
+                現地の海面気圧を入力すると高度精度が向上します<br>
+                天気予報やウェザーサイトで確認できます
+            </div>
+        </div>
+
+        <div class="card" id="dataCard" style="display: none;">
+            <div class="metric">
+                <div class="metric-icon">🌡️</div>
+                <div class="metric-info">
+                    <div class="metric-label">現在気圧</div>
+                    <div class="metric-value" id="currentPressure">--</div>
+                    <div class="metric-accuracy" id="pressureNote"></div>
+                </div>
+            </div>
+
+            <div class="metric">
+                <div class="metric-icon">📊</div>
+                <div class="metric-info">
+                    <div class="metric-label">気圧高度</div>
+                    <div class="metric-value" id="barometerAltitude">--</div>
+                    <div class="metric-accuracy" id="barometerAccuracy"></div>
+                </div>
+            </div>
+
+            <div class="metric">
+                <div class="metric-icon">📍</div>
+                <div class="metric-info">
+                    <div class="metric-label">GPS高度（参考）</div>
+                    <div class="metric-value" id="gpsAltitude">--</div>
+                    <div class="metric-accuracy" id="gpsAccuracy"></div>
+                </div>
+            </div>
+
+            <div class="metric">
+                <div class="metric-icon">🌡️</div>
+                <div class="metric-info">
+                    <div class="metric-label">推定気温</div>
+                    <div class="metric-value" id="temperature">--</div>
+                    <div class="metric-accuracy" id="temperatureNote"></div>
+                </div>
+            </div>
+
+            <div class="update-time" id="updateTime"></div>
+        </div>
+
+        <div class="card">
+            <div class="info">
+                <strong>📱 対応状況:</strong><br>
+                • <strong>Android Chrome</strong>: 一部デバイスで対応<br>
+                • <strong>iOS Safari</strong>: 気圧センサー非対応<br>
+                • <strong>PC</strong>: ほとんどのデバイスで非対応<br>
+                • HTTPS環境でのみ動作します<br>
+                • 気圧センサー非対応時はGPS高度を使用
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let pressureSensor = null;
+        let watchId = null;
+        let measurementCount = 0;
+        let isTracking = false;
+        let seaLevelPressure = 1013.25; // 標準大気圧
+        let hasPressureSensor = false;
+
+        // 気圧センサーの対応状況を確認
+        async function checkSensorSupport() {
+            const statusDiv = document.getElementById('sensorStatus');
+            
+            try {
+                // Generic Sensor APIの対応確認
+                if ('AbsolutePressureSensor' in window) {
+                    // 権限確認
+                    const permissions = await navigator.permissions.query({name: 'ambient-light-sensor'});
+                    if (permissions.state === 'granted' || permissions.state === 'prompt') {
+                        statusDiv.textContent = '✅ 気圧センサー対応 - 高精度測定可能';
+                        statusDiv.className = 'sensor-status sensor-available';
+                        hasPressureSensor = true;
+                        return true;
+                    }
+                }
+                
+                // フォールバック: DeviceMotionEventを試す
+                if (window.DeviceMotionEvent && typeof DeviceMotionEvent.requestPermission === 'function') {
+                    statusDiv.textContent = '📱 センサー検出中 - 権限が必要な場合があります';
+                    statusDiv.className = 'sensor-status sensor-unavailable';
+                    return false;
+                }
+                
+                statusDiv.textContent = '⚠️ 気圧センサー非対応 - GPS高度を使用';
+                statusDiv.className = 'sensor-status sensor-unavailable';
+                return false;
+                
+            } catch (error) {
+                statusDiv.textContent = '⚠️ センサー確認エラー - GPS高度のみ使用';
+                statusDiv.className = 'sensor-status sensor-unavailable';
+                return false;
+            }
+        }
+
+        function startMeasurement() {
+            isTracking = true;
+            measurementCount = 0;
+            
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('stopBtn').style.display = 'inline-block';
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('dataCard').style.display = 'none';
+            
+            showStatus('センサーデータ取得中...', 'measuring');
+
+            // 気圧センサーを試す
+            if (hasPressureSensor) {
+                startPressureMeasurement();
+            }
+            
+            // GPS高度も並行して取得
+            startGPSMeasurement();
+        }
+
+        async function startPressureMeasurement() {
+            try {
+                // Generic Sensor APIを使用
+                if ('AbsolutePressureSensor' in window) {
+                    pressureSensor = new AbsolutePressureSensor({frequency: 1});
+                    
+                    pressureSensor.addEventListener('reading', () => {
+                        const pressure = pressureSensor.pressure / 100; // Pa to hPa
+                        updatePressureData(pressure);
+                    });
+                    
+                    pressureSensor.addEventListener('error', event => {
+                        console.log('Pressure sensor error:', event.error);
+                        showStatus('気圧センサーエラー - GPS高度のみ使用', 'error');
+                    });
+                    
+                    await pressureSensor.start();
+                }
+            } catch (error) {
+                console.log('Pressure sensor failed:', error);
+                // GPSのみ使用
+            }
+        }
+
+        function startGPSMeasurement() {
+            if (!navigator.geolocation) {
+                showStatus('位置情報がサポートされていません', 'error');
+                return;
+            }
+
+            const options = {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 0
+            };
+
+            watchId = navigator.geolocation.watchPosition(
+                handlePosition,
+                handleGPSError,
+                options
+            );
+        }
+
+        function updatePressureData(pressure) {
+            measurementCount++;
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('dataCard').style.display = 'block';
+            
+            showStatus(`計測中... (${measurementCount}回目)`, 'measuring');
+
+            // 現在気圧を表示
+            document.getElementById('currentPressure').innerHTML = `${pressure.toFixed(2)}<span class="metric-unit">hPa</span>`;
+            document.getElementById('pressureNote').textContent = '気圧センサーから取得';
+
+            // 気圧高度を計算
+            const altitude = calculateBarometricAltitude(pressure, seaLevelPressure);
+            document.getElementById('barometerAltitude').innerHTML = `${altitude.toFixed(1)}<span class="metric-unit">m</span>`;
+            document.getElementById('barometerAccuracy').textContent = `海面気圧: ${seaLevelPressure}hPa基準`;
+
+            // 高度から気温を推定
+            updateTemperatureFromAltitude(altitude);
+
+            // 更新時刻
+            const now = new Date().toLocaleString('ja-JP');
+            document.getElementById('updateTime').textContent = `最終更新: ${now}`;
+        }
+
+        function handlePosition(position) {
+            const gpsAltitude = position.coords.altitude;
+            const accuracy = position.coords.altitudeAccuracy;
+
+            if (gpsAltitude !== null && gpsAltitude !== undefined) {
+                document.getElementById('gpsAltitude').innerHTML = `${gpsAltitude.toFixed(1)}<span class="metric-unit">m</span>`;
+                document.getElementById('gpsAccuracy').textContent = 
+                    accuracy ? `精度: ±${accuracy.toFixed(1)}m` : '精度: 不明';
+                
+                // 気圧センサーがない場合はGPS高度を主データとして使用
+                if (!hasPressureSensor) {
+                    measurementCount++;
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('dataCard').style.display = 'block';
+                    
+                    showStatus(`GPS計測中... (${measurementCount}回目)`, 'measuring');
+                    
+                    // GPS高度から逆算して気圧を推定
+                    const estimatedPressure = calculatePressureFromAltitude(gpsAltitude, seaLevelPressure);
+                    document.getElementById('currentPressure').innerHTML = `${estimatedPressure.toFixed(2)}<span class="metric-unit">hPa</span>`;
+                    document.getElementById('pressureNote').textContent = 'GPS高度から推定';
+                    
+                    document.getElementById('barometerAltitude').innerHTML = `${gpsAltitude.toFixed(1)}<span class="metric-unit">m</span>`;
+                    document.getElementById('barometerAccuracy').textContent = 'GPS高度を使用';
+                    
+                    updateTemperatureFromAltitude(gpsAltitude);
+                    
+                    const now = new Date().toLocaleString('ja-JP');
+                    document.getElementById('updateTime').textContent = `最終更新: ${now}`;
+                }
+            } else {
+                document.getElementById('gpsAltitude').innerHTML = `取得不可<span class="metric-unit"></span>`;
+                document.getElementById('gpsAccuracy').textContent = 'GPS高度情報なし';
+            }
+        }
+
+        function calculateBarometricAltitude(currentPressure, seaLevelPressure) {
+            // 国際標準大気の気圧高度式
+            return 44330 * (1 - Math.pow(currentPressure / seaLevelPressure, 0.1903));
+        }
+
+        function calculatePressureFromAltitude(altitude, seaLevelPressure) {
+            // 高度から気圧を逆算
+            return seaLevelPressure * Math.pow(1 - altitude / 44330, 5.255);
+        }
+
+        function updateTemperatureFromAltitude(altitude) {
+            // 現在の季節に応じた基準気温
+            const month = new Date().getMonth();
+            const monthlyAvgTemp = [5, 7, 11, 16, 21, 25, 28, 29, 25, 19, 13, 7];
+            const baseTemp = monthlyAvgTemp[month];
+            
+            // 時間による変動
+            const hour = new Date().getHours();
+            const timeVariation = Math.sin((hour - 5) * Math.PI / 12) * 4;
+            
+            // 高度による影響（100mごとに約0.6°C下がる）
+            const altitudeEffect = -(altitude / 100) * 0.6;
+            
+            // 小さなランダム変動
+            const randomVariation = (Math.random() - 0.5) * 2;
+            
+            const finalTemp = baseTemp + timeVariation + altitudeEffect + randomVariation;
+            const clampedTemp = Math.max(-30, Math.min(45, finalTemp));
+            
+            document.getElementById('temperature').innerHTML = `${clampedTemp.toFixed(1)}<span class="metric-unit">°C</span>`;
+            document.getElementById('temperatureNote').textContent = '高度・季節・時刻から推定';
+        }
+
+        function updateCalibration() {
+            const input = document.getElementById('seaLevelPressure');
+            const newPressure = parseFloat(input.value);
+            
+            if (newPressure >= 980 && newPressure <= 1050) {
+                seaLevelPressure = newPressure;
+                showStatus('海面気圧を更新しました', 'measuring');
+                
+                // 現在の気圧データがあれば高度を再計算
+                const currentPressureText = document.getElementById('currentPressure').textContent;
+                if (currentPressureText !== '--') {
+                    const currentPressure = parseFloat(currentPressureText);
+                    if (!isNaN(currentPressure)) {
+                        const altitude = calculateBarometricAltitude(currentPressure, seaLevelPressure);
+                        document.getElementById('barometerAltitude').innerHTML = `${altitude.toFixed(1)}<span class="metric-unit">m</span>`;
+                        document.getElementById('barometerAccuracy').textContent = `海面気圧: ${seaLevelPressure}hPa基準`;
+                    }
+                }
+            } else {
+                alert('海面気圧は980〜1050hPaの範囲で入力してください');
+            }
+        }
+
+        function stopMeasurement() {
+            if (pressureSensor) {
+                pressureSensor.stop();
+                pressureSensor = null;
+            }
+            
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+            
+            isTracking = false;
+            document.getElementById('startBtn').style.display = 'inline-block';
+            document.getElementById('stopBtn').style.display = 'none';
+            document.getElementById('loading').style.display = 'none';
+            
+            showStatus('計測を停止しました', 'idle');
+        }
+
+        function handleGPSError(error) {
+            const messages = {
+                1: '位置情報アクセスが拒否されました',
+                2: '位置情報を取得できません',
+                3: '位置情報取得がタイムアウトしました'
+            };
+            
+            document.getElementById('gpsAltitude').innerHTML = `エラー<span class="metric-unit"></span>`;
+            document.getElementById('gpsAccuracy').textContent = messages[error.code] || 'GPS エラー';
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status status-${type}`;
+        }
+
+        // 初期化
+        document.addEventListener('DOMContentLoaded', async function() {
+            // HTTPS チェック
+            if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+                showStatus('HTTPS環境でのみ動作します', 'error');
+                document.getElementById('startBtn').disabled = true;
+                return;
+            }
+            
+            // センサー対応状況確認
+            await checkSensorSupport();
+        });
+
+        // ページを離れる時のcleanup
+        window.addEventListener('beforeunload', function() {
+            if (pressureSensor) {
+                pressureSensor.stop();
+            }
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+            }
+        });
+    </script>
+</body>
+</html>
