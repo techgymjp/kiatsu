@@ -462,8 +462,8 @@
                 document.getElementById('gpsAccuracy').textContent = 
                     accuracy ? `精度: ±${accuracy.toFixed(1)}m` : '精度: 不明';
                 
-                // 気圧センサーがない場合はGPS高度を主データとして使用
-                if (!hasPressureSensor) {
+                // 気圧センサーがない場合でも、GPS高度をそのまま気圧高度欄に表示しない
+                if (!hasPressureSensor && measurementCount === 0) {
                     measurementCount++;
                     document.getElementById('loading').style.display = 'none';
                     document.getElementById('dataCard').style.display = 'block';
@@ -475,8 +475,9 @@
                     document.getElementById('currentPressure').innerHTML = `${estimatedPressure.toFixed(2)}<span class="metric-unit">hPa</span>`;
                     document.getElementById('pressureNote').textContent = 'GPS高度から推定';
                     
-                    document.getElementById('barometerAltitude').innerHTML = `${gpsAltitude.toFixed(1)}<span class="metric-unit">m</span>`;
-                    document.getElementById('barometerAccuracy').textContent = 'GPS高度を使用';
+                    // 気圧高度欄には「気圧センサー非対応」と表示
+                    document.getElementById('barometerAltitude').innerHTML = `センサー非対応<span class="metric-unit"></span>`;
+                    document.getElementById('barometerAccuracy').textContent = '気圧センサーが必要です';
                     
                     updateTemperatureFromAltitude(gpsAltitude);
                     
